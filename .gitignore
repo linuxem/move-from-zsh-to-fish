@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE and tool directories
+.antigravitycli/
+.qodo/
+.vscode/
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db
