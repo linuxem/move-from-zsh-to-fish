@@ -191,6 +191,57 @@ install_fisher() {
     fi
 }
 
+# Install and configure Starship Prompt
+install_starship() {
+    log_info "Checking and installing Starship prompt..."
+    
+    # Ensure ~/.local/bin is created
+    mkdir -p "$HOME/.local/bin"
+    
+    # Check if starship is already installed in system or locally
+    if command -v starship &> /dev/null; then
+        log_success "Starship prompt is already installed globally: $(starship --version | head -n 1)"
+    elif [ -f "$HOME/.local/bin/starship" ]; then
+        log_success "Starship prompt is already installed locally: $($HOME/.local/bin/starship --version | head -n 1)"
+    else
+        log_info "Starship not found. Installing locally to ~/.local/bin..."
+        if curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"; then
+            log_success "Starship binary installed successfully!"
+        else
+            log_error "Failed to install Starship."
+            exit 1
+        fi
+    fi
+
+    # Configure Starship for Fish shell
+    log_info "Configuring Starship for Fish..."
+    local fish_config_dir="$HOME/.config/fish/conf.d"
+    mkdir -p "$fish_config_dir"
+
+    # 1. Ensure local bin is added to PATH in Fish if not already
+    local path_config="$fish_config_dir/starship_path.fish"
+    if [ ! -f "$path_config" ]; then
+        echo -e '# Add ~/.local/bin to PATH for Starship\nfish_add_path -g "$HOME/.local/bin"' > "$path_config"
+        log_success "Created path configuration at ${path_config}"
+    else
+        log_info "Path configuration already exists at ${path_config}"
+    fi
+
+    # 2. Add starship init to Fish configuration
+    local starship_config="$fish_config_dir/starship.fish"
+    if [ ! -f "$starship_config" ]; then
+        echo -e '# Initialize Starship prompt\nstarship init fish | source' > "$starship_config"
+        log_success "Created Starship initialization at ${starship_config}"
+    else
+        if ! grep -q "starship init fish" "$starship_config"; then
+            echo -e '\n# Initialize Starship prompt\nstarship init fish | source' >> "$starship_config"
+            log_success "Added Starship initialization to existing ${starship_config}"
+        else
+            log_success "Starship is already initialized in ${starship_config}"
+        fi
+    fi
+}
+
 # Main Execution Flow
 main() {
     echo -e "${BOLD}${CYAN}====================================================${RESET}"
@@ -214,7 +265,10 @@ main() {
     # 5. Install Fisher
     install_fisher
 
-    # 6. Verify Installation
+    # 6. Install Starship Prompt
+    install_starship
+
+    # 7. Verify Installation
     echo -e "\n${BOLD}${CYAN}----------------------------------------------------${RESET}"
     echo -e "${BOLD}Checking Installation Status:${RESET}"
     echo -e "${BOLD}----------------------------------------------------${RESET}"
@@ -235,6 +289,16 @@ main() {
         echo -e "  - Fisher:        ${GREEN}[✓] Installed${RESET}"
     else
         echo -e "  - Fisher:        ${RED}[✗] Not Found${RESET}"
+    fi
+
+    if command -v starship &> /dev/null || [ -f "$HOME/.local/bin/starship" ]; then
+        local starship_bin="starship"
+        if [ -f "$HOME/.local/bin/starship" ]; then
+            starship_bin="$HOME/.local/bin/starship"
+        fi
+        echo -e "  - Starship:      ${GREEN}[✓] Installed${RESET} ($($starship_bin --version | head -n 1))"
+    else
+        echo -e "  - Starship:      ${RED}[✗] Not Found${RESET}"
     fi
     echo -e "${BOLD}${CYAN}----------------------------------------------------${RESET}\n"
 
